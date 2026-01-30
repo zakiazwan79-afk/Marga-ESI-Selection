@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seleksi Pendaftaran ESI</title>  <!-- 100% GitHub Pages Compatible -->  <!-- No backend, no server-side code -->  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #000;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .neon {
+      animation: neon 6s linear infinite;
+      text-shadow: 0 0 10px rgba(0,255,255,.7);
+    }
+
+    @keyframes neon {
+      0% { color: #00ffff; }
+      25% { color: #ff00ff; }
+      50% { color: #00ff00; }
+      75% { color: #ffff00; }
+      100% { color: #00ffff; }
+    }
+
+    .container {
+      max-width: 620px;
+      margin: 40px auto;
+      padding: 20px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 0 25px rgba(0,255,255,0.35);
+    }
+
+    h1 { text-align: center; }
+
+    .logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 180px;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+    }
+
+    textarea { resize: none; height: 90px; }
+
+    button {
+      cursor: pointer;
+      font-weight: bold;
+      background: linear-gradient(90deg,#00ffff,#ff00ff,#00ff00);
+      color: #000;
+    }
+
+    .rules {
+      background: rgba(0,0,0,0.6);
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(0,255,255,.3);
+    }
+
+    .hidden { display: none; }
+
+    .success { color: #00ff88; text-align: center; font-size: 18px; }
+    .fail { color: #ff4444; text-align: center; font-size: 16px; }
+
+    .icon {
+      font-size: 64px;
+      animation: pop .6s ease;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .stats { margin-top: 20px; font-size: 14px; }
+    .admin { margin-top: 25px; }
+    .warning { color: #ffcc00; font-size: 13px; }
+
+    a { color: #00ffff; text-decoration: none; font-weight: bold; }
+  </style></head>
+<body>  <div class="container"><!-- Logo -->
+<img src="./logo.png" alt="Logo ESI" class="logo" />
+
+<h1 class="neon">Welcome to ESI</h1>
+
+<!-- RULES -->
+<div id="rules" class="rules">
+  <h3>ATURAN MENGISI</h3>
+  <ol>
+    <li>Wajib Pakai Nama Lengkap Anda</li>
+    <li>Nama Tidak Boleh Aneh (simbol, toxic, alay, angka, kartun/anime)</li>
+    <li>Isi Dengan Jujur</li>
+    <li>Dilarang Spam</li>
+    <li>Jika Berhasil Akan Langsung Masuk Grup</li>
+    <li>Jika Gagal Berarti Tidak Memenuhi Syarat</li>
+  </ol>
+  <button onclick="acceptRules()">Mengerti</button>
+</div>
+
+<!-- FORM -->
+<form id="form" class="hidden" onsubmit="submitForm(event)">
+  <input id="nama" placeholder="Nama Lengkap (wajib)" required />
+  <input id="umur" type="number" min="13" placeholder="Umur (minimal 13)" required />
+  <input id="kota" placeholder="Asal Kota" required />
+  <input id="agama" placeholder="Agama" required />
+  <select id="kelamin" required>
+    <option value="">Pilih Kelamin</option>
+    <option>Laki-laki</option>
+    <option>Perempuan</option>
+  </select>
+  <textarea id="alasan" placeholder="Alasan Masuk" required></textarea>
+  <button type="submit">Kirim</button>
+  <div id="warn" class="warning"></div>
+</form>
+
+<!-- RESULT -->
+<div id="result"></div>
+
+<!-- STATS -->
+<div class="stats">
+  <div>Lulus: <span id="lulus">0</span></div>
+  <div>Gagal: <span id="gagal">0</span></div>
+</div>
+
+<!-- ADMIN -->
+<div class="admin">
+  <input id="adminkey" placeholder="Admin Key" />
+  <button onclick="openAdmin()">Lihat Riwayat</button>
+  <div id="riwayat"></div>
+</div>
+
+  </div><script>
+/* ===============================
+   GitHub Pages Safe JavaScript
+   =============================== */
+
+const ADMIN_KEY = "Admin-ESI972";
+const GROUP_LINK = "https://chat.whatsapp.com/C93SbFzaHooHh1EPCvaDAc?mode=gi_c";
+
+let data = JSON.parse(localStorage.getItem("esi_data") || "[]");
+let stats = JSON.parse(localStorage.getItem("esi_stats") || "{\"lulus\":0,\"gagal\":0}");
+let lastSubmit = localStorage.getItem("esi_last") || 0;
+
+function acceptRules(){
+  document.getElementById('rules').classList.add('hidden');
+  document.getElementById('form').classList.remove('hidden');
+}
+
+function detectBadName(nama){
+  const patterns = [
+    /[^a-zA-Z\s]/,                 // simbol & angka
+    /(anj|tol|kontol|fuck)/i,      // toxic
+    /(anime|naruto|luffy|goku|sasuke|eren)/i
+  ];
+  return patterns.some(p => p.test(nama));
+}
+
+function submitForm(e){
+  e.preventDefault();
+
+  const now = Date.now();
+  if(now - lastSubmit < 20*60*1000){
+    document.getElementById('warn').innerText = "Anda terdeteksi spam. Coba lagi 20 menit.";
+    return;
+  }
+
+  const nama = document.getElementById('nama').value.trim();
+  const umur = parseInt(document.getElementById('umur').value);
+
+  let status = "Gagal";
+  let output = "";
+
+  if(umur >= 13 && !detectBadName(nama)){
+    status = "Lulus";
+    output = `<div class='success'><div class='icon'>✔</div>Success<br><a href='${https://chat.whatsapp.com/C93SbFzaHooHh1EPCvaDAc?mode=gi_c}' target='_blank'>Masuk Grup WhatsApp</a></div>`;
+    stats.lulus++;
+  } else {
+    output = `<div class='fail'><div class='icon'>✖</div>Maaf Anda Tidak Bisa Bergabung, Karena Tidak Memenuhi Syarat</div>`;
+    stats.gagal++;
+  }
+
+  data.push({ nama, status, waktu: new Date().toLocaleString() });
+
+  localStorage.setItem("esi_data", JSON.stringify(data));
+  localStorage.setItem("esi_stats", JSON.stringify(stats));
+  localStorage.setItem("esi_last", now);
+
+  document.getElementById('result').innerHTML = output;
+  document.getElementById('lulus').innerText = stats.lulus;
+  document.getElementById('gagal').innerText = stats.gagal;
+}
+
+function openAdmin(){
+  const key = document.getElementById('adminkey').value;
+  if(key !== admin-seleksi972) return alert("Admin Key salah");
+
+  let html = "<h4>Riwayat Pendaftar</h4>";
+  data.forEach(d => {
+    html += `<div>${d.waktu} - ${d.nama} : ${d.status}</div>`;
+  });
+  document.getElementById('riwayat').innerHTML = html;
+}
+
+// Init stats
+
+document.getElementById('lulus').innerText = stats.lulus;
+document.getElementById('gagal').innerText = stats.gagal;
+</script></body>
+  </html>
